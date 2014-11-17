@@ -7,6 +7,8 @@ use Symfony\Component\Filesystem\Filesystem;
 
 class Dumper
 {
+    const QUERY_LIMIT = 2;
+
     protected $connection;
     protected $fs;
 
@@ -18,29 +20,50 @@ class Dumper
 
     public function dumpData($file, $table, $columns = [])
     {
-        $query = $this->buildDumpQuery($table, $columns, $file);
+        $this->prepareFile($file);
 
-        $this->connection->executeQuery($query);
+        $baseQuery = $this->buildDumpQuery($table, $columns, $file);
+
+        $offset = 0;
+
+        while ($records = $this->connection->fetchAll($baseQuery . " LIMIT $offset, " . self::QUERY_LIMIT)) {
+            $this->dumpDataChunk($file, $records);
+
+            $offset += self::QUERY_LIMIT;
+        }
     }
 
     public function dumpTmpTableSchema($file, $table, $tmpTableName, $columns = [])
     {
+        $this->prepareFile($file);
+
         $tmpTableSchema = $this->createTmpTableSchema($table, $tmpTableName, $columns);
 
         $this->fs->dumpFile($file, $tmpTableSchema);
     }
 
-    protected function buildDumpQuery($table, $columns, $file)
+    protected function dumpDataChunk($file, $records)
+    {
+        $data = [];
+
+        foreach ($records as $recordFields) {
+            $values = [];
+
+            foreach ($recordFields as $recordField) {
+                $values[] = $this->connection->quote($recordField);
+            }
+
+            $data[] = implode(',', $values);
+        }
+
+        file_put_contents($file, implode("\n", $data) . "\n", FILE_APPEND);
+    }
+
+    protected function buildDumpQuery($table, $columns)
     {
         $fields = $this->buildSelectedFields($columns);
 
-        return <<<EOF
-        SELECT $fields
-        INTO OUTFILE '$file'
-            FIELDS TERMINATED BY ',' OPTIONALLY ENCLOSED BY '"'
-            LINES TERMINATED BY '\n'
-        FROM `$table`
-EOF;
+        return "SELECT $fields FROM `$table`";
     }
 
     protected function buildSelectedFields($columns)
@@ -94,7 +117,6 @@ EOF;
         }
 
 
-
         $newSchemaLines = [];
 
 
@@ -116,5 +138,16 @@ EOF;
         $newSchemaLines[] = $engineSchema;
 
         return implode("\n", $newSchemaLines);
+    }
+
+    protected function prepareFile($file)
+    {
+        if ($this->fs->exists($file)) {
+            $this->fs->remove($file);
+        }
+
+        $this->fs->mkdir(dirname($file));
+        $this->fs->touch($file);
+        $this->fs->chmod($file, 0777);
     }
 } 

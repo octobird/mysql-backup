@@ -122,7 +122,7 @@ EOF;
         return <<<EOF
         LOAD DATA INFILE '$file'
         INTO TABLE `$table`
-            FIELDS TERMINATED BY ',' OPTIONALLY ENCLOSED BY '"'
+            FIELDS TERMINATED BY ',' OPTIONALLY ENCLOSED BY '\''
             LINES TERMINATED BY '\n'
         ;
 EOF;

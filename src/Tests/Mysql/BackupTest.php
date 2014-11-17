@@ -13,7 +13,7 @@ class BackupTest extends PHPUnit_Framework_TestCase
     protected $originalTable = 'main';
     protected $tmpTable = 'main_tmp';
 
-    protected $backupDir = '/tmp';
+    protected $backupDir;
 
     protected $originalData = [];
 
@@ -30,6 +30,8 @@ class BackupTest extends PHPUnit_Framework_TestCase
 
     public function setUp()
     {
+        $this->backupDir = $GLOBALS['backup_dir'];
+
         $this->getConnection();
         $this->getBackupObject();
 
@@ -56,7 +58,7 @@ class BackupTest extends PHPUnit_Framework_TestCase
         $this->backup->dump($this->originalTable);
 
         $expectedDataFile = $this->backupDir . "/{$this->originalTable}-all.txt";
-        $expectedDataFileContent = implode("\n", ['1,"1","1",1', '2,"2","2",2', '3,"3","3",3', '']);
+        $expectedDataFileContent = implode("\n", ["'1','1','need \' escape','1'", "'2','2','2','2'", "'3','3','3','3'", '']);
 
         $this->assertFileExists($expectedDataFile);
         $this->assertStringEqualsFile($expectedDataFile, $expectedDataFileContent);
@@ -108,7 +110,7 @@ class BackupTest extends PHPUnit_Framework_TestCase
         $this->backup->dump($this->originalTable, ['param', 'id', 'value']);
 
         $expectedFile = $this->backupDir . "/{$this->originalTable}-id-param-value.txt";
-        $expectedFileContent = implode("\n", ['1,1,"1"', '2,2,"2"', '3,3,"3"', '']);
+        $expectedFileContent = implode("\n", ["'1','1','need \' escape'", "'2','2','2'", "'3','3','3'", '']);
 
         $this->assertFileExists($expectedFile);
         $this->assertStringEqualsFile($expectedFile, $expectedFileContent);
@@ -184,6 +186,16 @@ EOF;
 
         $this->conn->executeQuery($query);
 
-        $this->conn->executeQuery("INSERT INTO `{$this->originalTable}` (id, name, value, param) VALUES(1, '1', '1', 1), (2, '2', '2', 2), (3, '3', '3', 3)");
+
+        $query = <<<EOF
+        INSERT INTO `{$this->originalTable}`
+            (id, name, value, param)
+        VALUES
+            (1, '1', "need ' escape", 1),
+            (2, '2', '2', 2),
+            (3, '3', '3', 3)
+EOF;
+
+        $this->conn->executeQuery($query);
     }
 }

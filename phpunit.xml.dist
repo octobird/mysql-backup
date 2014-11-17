@@ -13,14 +13,17 @@
         bootstrap="src/Tests/TestInit.php"
         >
 
-    <!-- Указать свои реквизиты для mysql -->
+
     <php>
+        <!-- Указать свои реквизиты для mysql -->
         <var name="db_type" value="pdo_mysql"/>
         <var name="db_host" value="localhost"/>
         <var name="db_username" value="root"/>
         <var name="db_password" value=""/>
         <var name="db_name" value="mysql-backup-tests"/>
         <var name="db_port" value="3306"/>
+
+        <var name="backup_dir" value="/tmp/mysql-backup-tests"/>
     </php>
 
     <testsuites>
