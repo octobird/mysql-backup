@@ -1,0 +1,13 @@
+{
+    "name": "octobird/mysql-backup",
+    "require": {
+
+        "doctrine/doctrine-migrations-bundle": "dev-master"
+    },
+    "autoload": {
+        "psr-4": {
+            "Octobird\\": "src/"
+        }
+    },
+    "minimum-stability": "dev"
+}
