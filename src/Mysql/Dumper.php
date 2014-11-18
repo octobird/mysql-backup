@@ -1,24 +1,42 @@
 <?php
 
-namespace Octobird\Mysql\Backup;
+namespace Octobird\Mysql;
 
 use Doctrine\DBAL\Connection;
 use Symfony\Component\Filesystem\Filesystem;
 
 class Dumper
 {
-    const QUERY_LIMIT = 2;
+    const QUERY_LIMIT = 1000;
 
-    protected $connection;
-    protected $fs;
+    private $connection;
+    private $backupDir;
+    private $fs;
 
-    public function __construct(Connection $connection)
+    public function __construct(Connection $connection, $backupDir)
     {
         $this->connection = $connection;
+        $this->backupDir = $backupDir;
         $this->fs = new Filesystem();
     }
 
-    public function dumpData($file, $table, $columns = [])
+    /**
+     * @param $table
+     * @param array $columns Список полей таблицы, которые нужно сохранить. Обязательно должен быть включен PK. Если поля явно не указаны - сохраняются все.
+     */
+    public function dump($table, $columns = [])
+    {
+        sort($columns);
+
+        $tmpTable = NamerHelper::getTmpTableName($table);
+        $dataFile = NamerHelper::getFile($this->backupDir, $table, $columns);
+        $schemaFile = NamerHelper::getFile($this->backupDir, $tmpTable, $columns);
+
+        $this->dumpData($dataFile, $table, $columns);
+        $this->dumpTmpTableSchema($schemaFile, $table, $tmpTable, $columns);
+    }
+
+    private function dumpData($file, $table, $columns = [])
     {
         $this->prepareFile($file);
 
@@ -33,7 +51,7 @@ class Dumper
         }
     }
 
-    public function dumpTmpTableSchema($file, $table, $tmpTableName, $columns = [])
+    private function dumpTmpTableSchema($file, $table, $tmpTableName, $columns = [])
     {
         $this->prepareFile($file);
 
@@ -42,7 +60,7 @@ class Dumper
         $this->fs->dumpFile($file, $tmpTableSchema);
     }
 
-    protected function dumpDataChunk($file, $records)
+    private function dumpDataChunk($file, $records)
     {
         $data = [];
 
@@ -59,14 +77,14 @@ class Dumper
         file_put_contents($file, implode("\n", $data) . "\n", FILE_APPEND);
     }
 
-    protected function buildDumpQuery($table, $columns)
+    private function buildDumpQuery($table, $columns)
     {
         $fields = $this->buildSelectedFields($columns);
 
         return "SELECT $fields FROM `$table`";
     }
 
-    protected function buildSelectedFields($columns)
+    private function buildSelectedFields($columns)
     {
         if (empty($columns)) {
             $columns = '*';
@@ -80,7 +98,7 @@ class Dumper
         return $columns;
     }
 
-    public function createTmpTableSchema($table, $tmpTableName, $columns = [])
+    private function createTmpTableSchema($table, $tmpTableName, $columns = [])
     {
         $tmpTableSchema = $this->connection->fetchColumn("SHOW CREATE TABLE `$table`", [], 1);
 
@@ -140,7 +158,7 @@ class Dumper
         return implode("\n", $newSchemaLines);
     }
 
-    protected function prepareFile($file)
+    private function prepareFile($file)
     {
         if ($this->fs->exists($file)) {
             $this->fs->remove($file);

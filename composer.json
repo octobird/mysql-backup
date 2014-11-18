@@ -2,7 +2,8 @@
     "name": "octobird/mysql-backup",
     "require": {
 
-        "doctrine/doctrine-migrations-bundle": "dev-master"
+        "doctrine/doctrine-migrations-bundle": "dev-master",
+        "symfony/filesystem": "~2.3"
     },
     "autoload": {
         "psr-4": {
